@@ -1,4 +1,12 @@
 authentification.json
 config.txt
-img/
+chapter_link.txt
 **/__pycache__/
+
+build/
+dist/
+main.spec
+
+**.png
+**.jpg
+**.jpeg

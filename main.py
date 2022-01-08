@@ -1,28 +1,22 @@
 '''Publish images to telegraph'''
 from os import listdir, path
-from collections import namedtuple
 from json import load as json_load
 from telegraph import Telegraph
 import requests
 from func import ProgressBar
-
-PublishInfo = namedtuple("PublishInfo",
-                         ["title", "auth_name", "auth_name_sh", "img_folder"])
-info = PublishInfo(
-    'Test',
-    'Zumori',
-    'Zumori',
-    'img'
-)
+from dict_to_class import Converter
 
 
-def telegraph_auth():
+def get_config(file_path=None):
+    '''Get configuration data from file'''
+    file_path = file_path or 'config.txt'
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return Converter.dict2class(json_load(f))
+
+
+def telegraph_auth(config):
     '''Authenticate telegraph account'''
-    with open('authentification.json', 'r', encoding='utf-8') as f:
-        token = json_load(f)['main']
-    telegraph = Telegraph(token)
-    telegraph.create_account(short_name=info.auth_name_sh,
-                             author_name=info.auth_name, replace_token=False)
+    telegraph = Telegraph(config.auth_token)
     return telegraph
 
 
@@ -34,11 +28,11 @@ def upload_img(img_path):
         return request.json()[0]['src']
 
 
-def create_html():
+def create_html(config):
     '''create article html'''
-    images = [f'{info.img_folder}/{i}'
-              for i in listdir(info.img_folder)
-              if path.isfile(f'{info.img_folder}/{i}')]
+    images = [f'{config.img_folder}/{i}'
+              for i in listdir(config.img_folder)
+              if path.isfile(f'{config.img_folder}/{i}')]
 
     progress_bar = ProgressBar(len(images))
     img_urls = [(upload_img(img), progress_bar.print(i+1))[0]
@@ -49,15 +43,19 @@ def create_html():
 
 def main():
     '''main function'''
-    html_page = create_html()
+    config = get_config()
+    html_page = create_html(config)
     print(html_page)
 
-    telegraph = telegraph_auth()
+    telegraph = telegraph_auth(config)
     response = telegraph.create_page(
-        info.title,
-        html_content='hentai test'
+        config.title,  # pylint: disable=no-member
+        html_content=html_page,
+        author_name=config.author_name  # pylint: disable=no-member
     )
-    print(f'http://telegra.ph/{response["path"]}')
+    # pylint: disable=no-member
+    with open(config.output_file, 'w', encoding='utf-8') as f:
+        f.write(f'http://telegra.ph/{response["path"]}')
 
 
 if __name__ == '__main__':
